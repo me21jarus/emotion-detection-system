@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multimodal Emotion Detection System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            min-height: 100vh;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        .floating-shapes {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: -1;
+        }
+
+        .shape {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            animation: float 20s infinite linear;
+        }
+
+        .shape:nth-child(1) {
+            width: 80px;
+            height: 80px;
+            left: 10%;
+            animation-delay: 0s;
+        }
+
+        .shape:nth-child(2) {
+            width: 120px;
+            height: 120px;
+            left: 80%;
+            animation-delay: 5s;
+        }
+
+        .shape:nth-child(3) {
+            width: 60px;
+            height: 60px;
+            left: 50%;
+            animation-delay: 10s;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100px) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 30px;
+            padding: 40px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+            animation: slideInUp 0.8s ease-out;
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+            font-size: 3em;
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from {
+                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 0 20px rgba(255, 255, 255, 0.5);
+            }
+            to {
+                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 0 30px rgba(255, 255, 255, 0.8);
+            }
+        }
+
+        .layout {
+            display: grid;
+            grid-template-rows: auto 60vh auto auto;
+            gap: 30px;
+            height: 100%;
+        }
+
+        /* Audio Processing Section */
+        .audio-section {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 25px;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            text-align: center;
+            transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+            animation: fadeInDown 0.6s ease-out 0.2s both;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .audio-section:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .section-title {
+            font-size: 1.5em;
+            color: white;
+            margin-bottom: 20px;
+            font-weight: 600;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .audio-visualizer {
+            width: 100%;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 15px 0;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .audio-visualizer::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .recording-indicator {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            color: white;
+        }
+
+        .recording-indicator.active {
+            display: flex;
+        }
+
+        .pulse-dot {
+            width: 12px;
+            height: 12px;
+            background: #ff4757;
+            border-radius: 50%;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+        }
+
+        /* Video Section */
+        .video-section {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            animation: fadeInLeft 0.6s ease-out 0.4s both;
+        }
+
+        @keyframes fadeInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        #videoContainer {
+            position: relative;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 3px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        #videoContainer:hover {
+            border-color: rgba(255, 255, 255, 0.4);
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.2);
+        }
+
+        #videoElement {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 12px;
+        }
+
+        .video-placeholder {
+            color: white;
+            font-size: 1.3em;
+            text-align: center;
+            opacity: 0.8;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Text Input Section */
+        .text-section {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            animation: fadeInRight 0.6s ease-out 0.6s both;
+        }
+
+        @keyframes fadeInRight {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        #textInput {
+            width: 100%;
+            height: 120px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 15px;
+            font-size: 16px;
+            color: white;
+            resize: none;
+            font-family: inherit;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        #textInput::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        #textInput:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.6);
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+            transform: scale(1.02);
+        }
+
+        .char-counter {
+            text-align: right;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+
+        /* Controls */
+        .controls {
+            text-align: center;
+            animation: fadeInUp 0.6s ease-out 0.8s both;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .control-hint {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.1em;
+            margin-bottom: 20px;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #ff6b6b, #ff8e53);
+            color: white;
+            border: none;
+            padding: 18px 40px;
+            font-size: 18px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+            font-weight: 600;
+            box-shadow: 0 8px 25px rgba(255, 107, 107, 0.3);
+            margin: 0 15px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 12px 35px rgba(255, 107, 107, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(-1px) scale(1.02);
+        }
+
+        .btn:disabled {
+            background: rgba(255, 255, 255, 0.3);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn.recording {
+            background: linear-gradient(45deg, #ff4757, #ff3838);
+            animation: recordingPulse 2s infinite;
+        }
+
+        @keyframes recordingPulse {
+            0%, 100% { 
+                box-shadow: 0 8px 25px rgba(255, 71, 87, 0.4);
+            }
+            50% { 
+                box-shadow: 0 12px 40px rgba(255, 71, 87, 0.6);
+                transform: translateY(-3px) scale(1.05);
+            }
+        }
+
+        /* Status */
+        .status {
+            text-align: center;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            font-weight: 600;
+            font-size: 1.1em;
+            display: none;
+            backdrop-filter: blur(10px);
+            border: 2px solid transparent;
+            animation: statusSlide 0.5s ease-out;
+        }
+
+        @keyframes statusSlide {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .status.processing {
+            background: rgba(255, 193, 7, 0.2);
+            color: #fff;
+            border-color: rgba(255, 193, 7, 0.5);
+            display: block;
+        }
+
+        .status.success {
+            background: rgba(40, 167, 69, 0.2);
+            color: #fff;
+            border-color: rgba(40, 167, 69, 0.5);
+            display: block;
+        }
+
+        .status.error {
+            background: rgba(220, 53, 69, 0.2);
+            color: #fff;
+            border-color: rgba(220, 53, 69, 0.5);
+            display: block;
+        }
+
+        .loading-spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #fff;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+            display: none;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Results Section */
+        .results-section {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            animation: fadeInUp 0.6s ease-out 1s both;
+        }
+
+        .emotion-results {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-top: 30px;
+        }
+
+        .emotion-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .emotion-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4);
+            transform: scaleX(0);
+            transition: transform 0.5s ease;
+        }
+
+        .emotion-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .emotion-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        .emotion-type {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 15px;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .emotion-value {
+            font-size: 2.5em;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            animation: emotionGlow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes emotionGlow {
+            from {
+                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 0 10px rgba(255, 255, 255, 0.3);
+            }
+            to {
+                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 0 20px rgba(255, 255, 255, 0.5);
+            }
+        }
+
+        .confidence {
+            font-size: 1em;
+            color: rgba(255, 255, 255, 0.8);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .combined-card {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, rgba(255, 107, 107, 0.2), rgba(78, 205, 196, 0.2));
+            border: 3px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .combined-card .emotion-value {
+            font-size: 3.5em;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .container {
+                padding: 30px;
+            }
+            
+            .layout {
+                grid-template-rows: auto 50vh auto auto;
+            }
+            
+            h1 {
+                font-size: 2.5em;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .layout {
+                grid-template-rows: auto 40vh auto auto;
+                gap: 20px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+            
+            .emotion-results {
+                grid-template-columns: 1fr;
+            }
+            
+            .btn {
+                padding: 15px 30px;
+                font-size: 16px;
+                margin: 10px 5px;
+            }
+        }
+
+        /* Keyboard indicator */
+        .keyboard-hint {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            backdrop-filter: blur(10px);
+            animation: slideInRight 0.5s ease-out;
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="floating-shapes">
+        <div class="shape"></div>
+        <div class="shape"></div>
+        <div class="shape"></div>
+    </div>
+
+    <div class="container">
+        <h1>🎭 AI Emotion Detection System</h1>
+        
+        <div class="layout">
+            <!-- Audio Processing Section (Top) -->
+            <div class="audio-section">
+                <div class="section-title">🎤 Audio Processing</div>
+                <div class="audio-visualizer" id="audioVisualizer">
+                    <div class="recording-indicator" id="recordingIndicator">
+                        <div class="pulse-dot"></div>
+                        <span>Recording audio...</span>
+                    </div>
+                    <span id="audioPlaceholder" style="color: rgba(255,255,255,0.7);">Audio analysis will appear here during recording</span>
+                </div>
+                <div style="color: rgba(255,255,255,0.8); font-size: 0.95em;">
+                    Speak clearly for better emotion detection accuracy
+                </div>
+            </div>
+
+            <!-- Video Section (60% of screen) -->
+            <div class="video-section">
+                <div class="section-title">📹 Video Analysis</div>
+                <div id="videoContainer">
+                    <video id="videoElement" autoplay muted></video>
+                    <div class="video-placeholder" id="videoPlaceholder">
+                        Press Enter to start recording
+                    </div>
+                </div>
+            </div>
+
+            <!-- Text Input Section -->
+            <div class="text-section">
+                <div class="section-title">📝 Text Analysis</div>
+                <textarea 
+                    id="textInput" 
+                    placeholder="Type your message here to analyze emotions... (Press Enter to start/stop recording)"
+                    maxlength="1000"
+                ></textarea>
+                <div class="char-counter">
+                    <span id="charCount">0</span>/1000 characters
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="controls">
+                <div class="control-hint">Press Enter to start/stop recording or use buttons below</div>
+                <button id="startBtn" class="btn">🎬 Start Recording</button>
+                <button id="stopBtn" class="btn" disabled>⏹️ Stop & Analyze</button>
+                <button id="resetBtn" class="btn">🔄 Reset</button>
+            </div>
+        </div>
+
+        <!-- Status -->
+        <div id="status" class="status"></div>
+        <div class="loading-spinner" id="loadingSpinner"></div>
+
+        <!-- Results Section -->
+        <div class="results-section">
+            <div class="section-title">🎯 Emotion Analysis Results</div>
+            <div class="emotion-results" id="emotionResults">
+                <div class="emotion-card">
+                    <div class="emotion-type">📹 Video Emotion</div>
+                    <div class="emotion-value" id="videoEmotion">-</div>
+                    <div class="confidence" id="videoConfidence">Press Enter to begin analysis</div>
+                </div>
+                <div class="emotion-card">
+                    <div class="emotion-type">🎤 Audio Emotion</div>
+                    <div class="emotion-value" id="audioEmotion">-</div>
+                    <div class="confidence" id="audioConfidence">Press Enter to begin analysis</div>
+                </div>
+                <div class="emotion-card">
+                    <div class="emotion-type">📝 Text Emotion</div>
+                    <div class="emotion-value" id="textEmotion">-</div>
+                    <div class="confidence" id="textConfidence">Press Enter to begin analysis</div>
+                </div>
+                <div class="emotion-card combined-card">
+                    <div class="emotion-type">🌟 Combined Analysis</div>
+                    <div class="emotion-value" id="combinedEmotion">-</div>
+                    <div class="confidence" id="combinedConfidence">Overall emotion based on all inputs</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="keyboard-hint">
+        💡 Press Enter to start/stop recording
+    </div>
+
+    <script>
+        class ModernEmotionDetectionApp {
+            constructor() {
+                this.isRecording = false;
+                this.mediaRecorder = null;
+                this.audioRecorder = null;
+                this.videoStream = null;
+                this.audioStream = null;
+                this.recordedChunks = [];
+                this.audioChunks = [];
+                
+                this.initializeElements();
+                this.setupEventListeners();
+                this.setupKeyboardControls();
+            }
+
+            initializeElements() {
+                this.startBtn = document.getElementById('startBtn');
+                this.stopBtn = document.getElementById('stopBtn');
+                this.resetBtn = document.getElementById('resetBtn');
+                this.videoElement = document.getElementById('videoElement');
+                this.textInput = document.getElementById('textInput');
+                this.charCount = document.getElementById('charCount');
+                this.status = document.getElementById('status');
+                this.loadingSpinner = document.getElementById('loadingSpinner');
+                this.videoPlaceholder = document.getElementById('videoPlaceholder');
+                this.audioPlaceholder = document.getElementById('audioPlaceholder');
+                this.recordingIndicator = document.getElementById('recordingIndicator');
+                
+                // Result elements
+                this.videoEmotion = document.getElementById('videoEmotion');
+                this.audioEmotion = document.getElementById('audioEmotion');
+                this.textEmotion = document.getElementById('textEmotion');
+                this.combinedEmotion = document.getElementById('combinedEmotion');
+                this.videoConfidence = document.getElementById('videoConfidence');
+                this.audioConfidence = document.getElementById('audioConfidence');
+                this.textConfidence = document.getElementById('textConfidence');
+                this.combinedConfidence = document.getElementById('combinedConfidence');
+            }
+
+            setupEventListeners() {
+                this.startBtn.addEventListener('click', () => this.startRecording());
+                this.stopBtn.addEventListener('click', () => this.stopRecording());
+                this.resetBtn.addEventListener('click', () => this.resetApp());
+                
+                this.textInput.addEventListener('input', (e) => {
+                    this.charCount.textContent = e.target.value.length;
+                });
+            }
+
+            setupKeyboardControls() {
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        if (!this.isRecording) {
+                            this.startRecording();
+                        } else {
+                            this.stopRecording();
+                        }
+                    }
+                });
+            }
+
+            async startRecording() {
+                try {
+                    this.showStatus('🚀 Initializing cameras and microphone...', 'processing');
+                    
+                    // Get video stream
+                    this.videoStream = await navigator.mediaDevices.getUserMedia({
+                        video: { width: 1280, height: 720 },
+                        audio: false
+                    });
+                    
+                    // Get audio stream
+                    this.audioStream = await navigator.mediaDevices.getUserMedia({
+                        audio: {
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            sampleRate: 44100
+                        }
+                    });
+
+                    // Setup video
+                    this.videoElement.srcObject = this.videoStream;
+                    this.videoPlaceholder.style.display = 'none';
+                    this.videoElement.style.display = 'block';
+
+                    // Show recording indicators
+                    this.audioPlaceholder.style.display = 'none';
+                    this.recordingIndicator.classList.add('active');
+
+                    // Setup video recorder
+                    this.mediaRecorder = new MediaRecorder(this.videoStream, {
+                        mimeType: 'video/webm;codecs=vp9'
+                    });
+                    
+                    // Setup audio recorder
+                    this.audioRecorder = new MediaRecorder(this.audioStream, {
+                        mimeType: 'audio/webm;codecs=opus'
+                    });
+
+                    this.recordedChunks = [];
+                    this.audioChunks = [];
+
+                    this.mediaRecorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            this.recordedChunks.push(event.data);
+                        }
+                    };
+
+                    this.audioRecorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            this.audioChunks.push(event.data);
+                        }
+                    };
+
+                    // Start recording
+                    this.mediaRecorder.start(1000);
+                    this.audioRecorder.start(1000);
+                    
+                    this.isRecording = true;
+                    this.updateUI();
+                    this.showStatus('🎬 Recording in progress... Express yourself naturally!', 'processing');
+                    
+                } catch (error) {
+                    console.error('Error starting recording:', error);
+                    this.showStatus('❌ Could not access camera/microphone. Please check permissions.', 'error');
+                }
+            }
+
+            stopRecording() {
+                if (!this.isRecording) return;
+
+                this.showStatus('🔄 Processing your emotions...', 'processing');
+                this.loadingSpinner.style.display = 'block';
+
+                this.mediaRecorder.stop();
+                this.audioRecorder.stop();
+                
+                this.isRecording = false;
+                this.updateUI();
+
+                // Hide recording indicators
+                this.recordingIndicator.classList.remove('active');
+                this.audioPlaceholder.style.display = 'block';
+
+                // Process after a short delay
+                setTimeout(() => {
+                    this.processEmotions();
+                }, 1000);
+            }
+
+            async processEmotions() {
+                try {
+                    const textContent = this.textInput.value.trim();
+                    
+                    // Create form data
+                    const formData = new FormData();
+                    
+                    // Add video blob
+                    if (this.recordedChunks.length > 0) {
+                        const videoBlob = new Blob(this.recordedChunks, { type: 'video/webm' });
+                        formData.append('video', videoBlob, 'recording.webm');
+                    }
+                    
+                    // Add audio blob
+                    if (this.audioChunks.length > 0) {
+                        const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+                        formData.append('audio', audioBlob, 'recording.webm');
+                    }
+                    
+                    // Add text
+                    if (textContent) {
+                        formData.append('text', textContent);
+                    }
+
+                    // Send to backend
+                    const response = await fetch('http://localhost:5000/analyze', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const results = await response.json();
+                    this.displayResults(results);
+                    this.showStatus('✅ Analysis completed successfully!', 'success');
+                    
+                } catch (error) {
+                    console.error('Error processing emotions:', error);
+                    this.showStatus('⚠️ Error processing your inputs. Showing demo results...', 'error');
+                    // Show demo results for development
+                    this.showDemoResults();
+                } finally {
+                    this.loadingSpinner.style.display = 'none';
+                }
+            }
+
+            displayResults(results) {
+                // Add entrance animations to result cards
+                const cards = document.querySelectorAll('.emotion-card');
+                cards.forEach((card, index) => {
+                    card.style.animation = `fadeInUp 0.6s ease-out ${index * 0.1}s both`;
+                });
+
+                // Display individual results with animations
+                if (results.video) {
+                    this.animateValueChange(this.videoEmotion, results.video.emotion || 'N/A');
+                    this.videoConfidence.textContent = `Confidence: ${(results.video.confidence * 100).toFixed(1)}%`;
+                }
+                
+                if (results.audio) {
+                    this.animateValueChange(this.audioEmotion, results.audio.emotion || 'N/A');
+                    this.audioConfidence.textContent = `Confidence: ${(results.audio.confidence * 100).toFixed(1)}%`;
+                }
+                
+                if (results.text) {
+                    this.animateValueChange(this.textEmotion, results.text.emotion || 'N/A');
+                    this.textConfidence.textContent = `Confidence: ${(results.text.confidence * 100).toFixed(1)}%`;
+                }
+                
+                // Display combined result with special animation
+                if (results.combined) {
+                    setTimeout(() => {
+                        this.animateValueChange(this.combinedEmotion, results.combined.emotion || 'N/A', true);
+                        this.combinedConfidence.textContent = `Overall Confidence: ${(results.combined.confidence * 100).toFixed(1)}%`;
+                    }, 500);
+                }
+            }
+
+            animateValueChange(element, newValue, isCombined = false) {
+                element.style.transform = 'scale(0)';
+                element.style.opacity = '0';
+                
+                setTimeout(() => {
+                    element.textContent = newValue;
+                    element.style.transition = 'all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
+                    element.style.transform = 'scale(1)';
+                    element.style.opacity = '1';
+                    
+                    if (isCombined) {
+                        element.style.animation = 'emotionGlow 2s ease-in-out infinite alternate';
+                    }
+                }, 100);
+            }
+
+            showDemoResults() {
+                // Demo results with realistic emotions
+                const demoResults = {
+                    video: { emotion: 'Happy', confidence: 0.87 },
+                    audio: { emotion: 'Excited', confidence: 0.82 },
+                    text: { emotion: 'Positive', confidence: 0.94 },
+                    combined: { emotion: 'Joyful', confidence: 0.88 }
+                };
+                this.displayResults(demoResults);
+            }
+
+            resetApp() {
+                // Stop all streams
+                if (this.videoStream) {
+                    this.videoStream.getTracks().forEach(track => track.stop());
+                }
+                if (this.audioStream) {
+                    this.audioStream.getTracks().forEach(track => track.stop());
+                }
+
+                // Reset video UI
+                this.videoElement.style.display = 'none';
+                this.videoPlaceholder.style.display = 'block';
+                this.videoPlaceholder.textContent = 'Press Enter to start recording';
+                
+                // Reset audio UI
+                this.recordingIndicator.classList.remove('active');
+                this.audioPlaceholder.style.display = 'block';
+                
+                // Reset text input
+                this.textInput.value = '';
+                this.charCount.textContent = '0';
+                
+                // Reset results with animation
+                const resultElements = [
+                    { element: this.videoEmotion, defaultText: '-' },
+                    { element: this.audioEmotion, defaultText: '-' },
+                    { element: this.textEmotion, defaultText: '-' },
+                    { element: this.combinedEmotion, defaultText: '-' }
+                ];
+                
+                resultElements.forEach(({ element, defaultText }, index) => {
+                    setTimeout(() => {
+                        this.animateValueChange(element, defaultText);
+                    }, index * 100);
+                });
+                
+                // Reset confidence texts
+                setTimeout(() => {
+                    this.videoConfidence.textContent = 'Press Enter to begin analysis';
+                    this.audioConfidence.textContent = 'Press Enter to begin analysis';
+                    this.textConfidence.textContent = 'Press Enter to begin analysis';
+                    this.combinedConfidence.textContent = 'Overall emotion based on all inputs';
+                }, 500);
+
+                // Reset state
+                this.isRecording = false;
+                this.recordedChunks = [];
+                this.audioChunks = [];
+                this.updateUI();
+                this.hideStatus();
+                this.loadingSpinner.style.display = 'none';
+            }
+
+            updateUI() {
+                this.startBtn.disabled = this.isRecording;
+                this.stopBtn.disabled = !this.isRecording;
+                
+                if (this.isRecording) {
+                    this.startBtn.classList.add('recording');
+                    this.startBtn.textContent = '🔴 Recording...';
+                } else {
+                    this.startBtn.classList.remove('recording');
+                    this.startBtn.textContent = '🎬 Start Recording';
+                }
+            }
+
+            showStatus(message, type) {
+                this.status.textContent = message;
+                this.status.className = `status ${type}`;
+                this.status.style.display = 'block';
+            }
+
+            hideStatus() {
+                this.status.style.display = 'none';
+            }
+        }
+
+        // Initialize the app when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new ModernEmotionDetectionApp();
+        });
+    </script>
+</body>
+</html>

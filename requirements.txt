@@ -1,0 +1,43 @@
+# Core Flask dependencies
+Flask==2.3.3
+Flask-CORS==4.0.0
+Werkzeug==2.3.7
+
+# Machine Learning and AI Models
+torch>=2.0.0
+torchvision>=0.15.0
+torchaudio>=2.0.0
+tensorflow>=2.13.0
+transformers>=4.30.0
+tokenizers>=0.13.3
+
+# Computer Vision
+opencv-python>=4.8.0
+opencv-contrib-python>=4.8.0
+Pillow>=10.0.0
+scikit-image>=0.21.0
+
+# Audio Processing
+librosa>=0.10.1
+soundfile>=0.12.1
+scipy>=1.11.0
+audioread>=3.0.0
+
+# Data Processing
+numpy>=1.24.0
+pandas>=2.0.0
+scikit-learn>=1.3.0
+
+# Utilities
+requests>=2.31.0
+python-multipart>=0.0.6
+python-dotenv>=1.0.0
+
+# Optional: For better performance
+numba>=0.57.0  # Speeds up librosa
+matplotlib>=3.7.0  # For visualizations during development
+
+# Development dependencies (optional)
+pytest>=7.4.0
+black>=23.0.0
+flake8>=6.0.0
